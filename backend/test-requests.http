@@ -1,0 +1,80 @@
+### NSDataLab API Test Requests
+### Use with REST Client extension in VS Code
+
+@baseUrl = http://localhost:5000
+
+### 1. Health Check
+GET {{baseUrl}}/health
+
+### 2. Generate Dataset - E-commerce Products
+POST {{baseUrl}}/api/generate
+Content-Type: application/json
+
+{
+  "topic": "E-commerce Products",
+  "description": "Sample product catalog for an online store",
+  "columns": [
+    { "name": "product_name", "datatype": "string" },
+    { "name": "price", "datatype": "currency" },
+    { "name": "category", "datatype": "string" },
+    { "name": "in_stock", "datatype": "boolean" },
+    { "name": "rating", "datatype": "float" }
+  ],
+  "rowCount": 10
+}
+
+### 3. Generate Dataset - User Data
+POST {{baseUrl}}/api/generate
+Content-Type: application/json
+
+{
+  "topic": "User Registration Data",
+  "description": "Sample user information for a web application",
+  "columns": [
+    { "name": "full_name", "datatype": "name" },
+    { "name": "email", "datatype": "email" },
+    { "name": "phone", "datatype": "phone" },
+    { "name": "address", "datatype": "address" },
+    { "name": "registration_date", "datatype": "date" }
+  ],
+  "rowCount": 15
+}
+
+### 4. Generate Dataset - Sales Data
+POST {{baseUrl}}/api/generate
+Content-Type: application/json
+
+{
+  "topic": "Monthly Sales Data",
+  "description": "Sales transactions for Q1 2024",
+  "columns": [
+    { "name": "transaction_id", "datatype": "string" },
+    { "name": "product", "datatype": "string" },
+    { "name": "quantity", "datatype": "integer" },
+    { "name": "unit_price", "datatype": "currency" },
+    { "name": "discount", "datatype": "percentage" },
+    { "name": "sale_date", "datatype": "date" }
+  ],
+  "rowCount": 20
+}
+
+### 5. Get All Datasets (Paginated)
+GET {{baseUrl}}/api/datasets?page=1&limit=10
+
+### 6. Get All Datasets (Sorted by topic)
+GET {{baseUrl}}/api/datasets?page=1&limit=10&sortBy=topic&sortOrder=asc
+
+### 7. Get Single Dataset by ID
+# Replace {dataset_id} with actual ID from previous requests
+GET {{baseUrl}}/api/datasets/{dataset_id}
+
+### 8. Delete Dataset by ID
+# Replace {dataset_id} with actual ID
+DELETE {{baseUrl}}/api/datasets/{dataset_id}
+
+### 9. Upload Sample CSV File
+# Note: This requires a file upload, use Postman or Thunder Client for this
+POST {{baseUrl}}/api/uploadSample
+Content-Type: multipart/form-data
+
+# Attach file with field name "file"
