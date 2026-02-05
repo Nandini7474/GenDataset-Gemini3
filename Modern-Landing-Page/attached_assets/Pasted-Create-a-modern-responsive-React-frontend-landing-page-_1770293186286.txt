@@ -1,0 +1,60 @@
+Create a modern, responsive React frontend landing page for a data generation platform named “NSdataLab”.
+
+Design & Theme:
+- Use the attached NSdataLab logo as reference.
+- Place the logo on the top-left corner of the navbar.
+- The overall theme should match the logo style: soft pastel gradient background, tech-inspired, clean, minimal, futuristic UI.
+- Use rounded components, subtle shadows, and smooth hover animations.
+- Prefer Tailwind CSS styling.
+
+Layout & Components:
+
+1. Top Section:
+- A horizontal dropdown button at the top center.
+- Label it as “Select Domain” with a required indicator (*).
+- Dropdown options represent different domains (e.g., Healthcare, Finance, E-commerce, Education).
+
+2. Prompt Input Section:
+- Below the domain dropdown, add a large multiline text input box.
+- Placeholder text similar to: 
+  “Describe your data (optional) — e.g., Generate customer data for an e-commerce store with purchase history”.
+- This field should be optional.
+
+3. Row & Column Inputs:
+- Below the prompt box, add two input fields side by side:
+  - Number of Rows (min 1, max 100,000)
+  - Number of Columns (min 1, max 30)
+- Include helper text below each input showing the allowed range.
+
+4. Schema Definition Table:
+- After selecting rows and columns, dynamically render a table.
+- Table columns:
+  - Field Name (text input)
+  - Type (dropdown with options like Row Number, First Name, Last Name, Email, Gender, IP Address, etc.)
+  - Required (toggle or checkbox)
+- Allow users to add/remove rows dynamically.
+- UI style similar to the attached dark-themed table reference but adapted to the overall pastel theme.
+
+5. Sample Data Upload:
+- Add an optional “Upload Sample Data” button below the table.
+- Accept CSV or Excel files.
+- Show uploaded file name after selection.
+
+6. Generate Button:
+- Add a prominent “Generate Data” button.
+- Center it horizontally.
+- Use gradient styling matching the NSdataLab theme.
+- Button should look primary and action-focused.
+
+7. Bottom Action Bar:
+- Left side: “Preview” button
+  - On click, show a modal or drawer preview of ~100 generated rows.
+- Center: Dropdown to select export format (CSV, JSON, Excel, SQL).
+- Right side: “Download” button to export generated data.
+
+Technical Notes:
+- Use React functional components.
+- Component-based structure.
+- Responsive layout for desktop and tablet.
+- Do not include backend logic, only frontend UI.
+- Use mock data where required.
