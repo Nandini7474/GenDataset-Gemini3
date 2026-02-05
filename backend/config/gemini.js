@@ -17,7 +17,7 @@ const initializeGemini = () => {
 
         // Using Gemini 3 Pro Preview model
         model = genAI.getGenerativeModel({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-3-flash-preview',
             generationConfig: {
                 temperature: 0.7,
                 topP: 0.95,
