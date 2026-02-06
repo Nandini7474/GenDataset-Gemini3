@@ -8,9 +8,10 @@ const logger = require('../utils/logger');
  * @param {Array} columns - Array of column objects {name, datatype}
  * @param {number} rowCount - Number of rows to generate
  * @param {Array} sampleData - Optional sample data for context
+ * @param {Object} kaggleReference - Optional Kaggle dataset reference
  * @returns {string} Formatted prompt
  */
-const buildPrompt = (topic, description, columns, rowCount, sampleData = null) => {
+const buildPrompt = (topic, description, columns, rowCount, sampleData = null, kaggleReference = null) => {
     let prompt = `You are a professional data generator. Generate a realistic dataset based on the following specifications:
 
 **Topic:** ${topic}
@@ -24,8 +25,38 @@ ${columns.map((col, idx) => `${idx + 1}. ${col.name} (${col.datatype})`).join('\
 
 `;
 
+    // Add Kaggle reference context if available
+    if (kaggleReference) {
+        prompt += `**Reference Dataset Context:**
+You have access to a real Kaggle dataset as reference: "${kaggleReference.datasetName}"
+Dataset URL: ${kaggleReference.datasetUrl}
+This dataset contains ${kaggleReference.totalRows} rows with the following structure:
+
+**Reference Columns:**
+${kaggleReference.columns.map((col, idx) =>
+            `${idx + 1}. ${col.name} (${col.datatype}) - Examples: ${col.sampleValues.join(', ')}`
+        ).join('\n')}
+
+**Sample Rows from Reference Dataset:**
+${JSON.stringify(kaggleReference.sampleRows.slice(0, 3), null, 2)}
+
+**IMPORTANT:** Use this reference dataset to understand:
+- Realistic data patterns and distributions
+- Appropriate value ranges and formats
+- Domain-specific terminology and naming conventions
+- Relationships between different data fields
+
+However, you MUST:
+- Generate NEW, ORIGINAL data (do NOT copy rows directly)
+- Follow the user's specified columns and datatypes (not the reference columns)
+- Maintain the same level of realism and quality as the reference
+- Ensure generated data is contextually appropriate for the topic
+
+`;
+    }
+
     if (sampleData && sampleData.length > 0) {
-        prompt += `**Sample Data for Reference:**
+        prompt += `**User-Provided Sample Data:**
 ${JSON.stringify(sampleData.slice(0, 3), null, 2)}
 
 `;
@@ -49,7 +80,7 @@ ${JSON.stringify(sampleData.slice(0, 3), null, 2)}
 
 4. Make the data realistic and contextually relevant to the topic
 5. Ensure variety in the generated data (avoid repetitive patterns)
-6. Return ONLY a valid JSON array of objects, no additional text or explanation
+${kaggleReference ? '6. Use the Kaggle reference to inform realistic patterns, but generate original data\n7. ' : '6. '}Return ONLY a valid JSON array of objects, no additional text or explanation
 
 **Output Format:**
 [
@@ -108,14 +139,16 @@ const parseGeminiResponse = (responseText) => {
  * @param {Array} params.columns - Column definitions
  * @param {number} params.rowCount - Number of rows
  * @param {Array} params.sampleData - Optional sample data
+ * @param {Object} params.kaggleReference - Optional Kaggle reference context
  * @returns {Promise<Array>} Generated dataset
  */
-const generateDataset = async ({ topic, description, columns, rowCount, sampleData }) => {
+const generateDataset = async ({ topic, description, columns, rowCount, sampleData, kaggleReference }) => {
     try {
-        logger.info(`Generating dataset for topic: ${topic} with ${rowCount} rows`);
+        const refInfo = kaggleReference ? ` with Kaggle reference (${kaggleReference.datasetName})` : '';
+        logger.info(`Generating dataset for topic: ${topic} with ${rowCount} rows${refInfo}`);
 
-        // Build the prompt
-        const prompt = buildPrompt(topic, description, columns, rowCount, sampleData);
+        // Build the prompt with Kaggle reference
+        const prompt = buildPrompt(topic, description, columns, rowCount, sampleData, kaggleReference);
         logger.debug(`Prompt built: ${prompt.substring(0, 200)}...`);
 
         // Get Gemini model

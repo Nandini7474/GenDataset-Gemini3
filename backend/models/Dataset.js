@@ -54,6 +54,31 @@ const datasetSchema = new mongoose.Schema({
         default: null,
         trim: true
     },
+    kaggleReferences: [{
+        datasetName: {
+            type: String,
+            trim: true
+        },
+        datasetUrl: {
+            type: String,
+            trim: true
+        },
+        datasetRef: {
+            type: String,
+            trim: true
+        },
+        columnsUsed: [{
+            type: String
+        }],
+        sampleSize: {
+            type: Number,
+            default: 0
+        },
+        usedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     generatedData: {
         type: mongoose.Schema.Types.Mixed,
         required: true,

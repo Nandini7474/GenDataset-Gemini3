@@ -1,11 +1,12 @@
 const Dataset = require('../models/Dataset');
 const { generateDataset } = require('../services/geminiService');
+const { getKaggleReference } = require('../services/kaggleService');
 const { parseSampleFile, extractSampleData, getFileExtension } = require('../services/fileService');
 const logger = require('../utils/logger');
 const { APIError } = require('../middleware/errorHandler');
 
 /**
- * Generate dataset using Gemini API
+ * Generate dataset using Gemini API with optional Kaggle reference
  * POST /api/generate
  */
 const generateDatasetController = async (req, res, next) => {
@@ -27,14 +28,42 @@ const generateDatasetController = async (req, res, next) => {
             }
         }
 
-        // Generate dataset using Gemini
+        // Get Kaggle reference (gracefully handle failures)
+        let kaggleReference = null;
+        try {
+            logger.info('Attempting to fetch Kaggle reference...');
+            kaggleReference = await getKaggleReference(topic, description);
+
+            if (kaggleReference) {
+                logger.success(`Using Kaggle reference: ${kaggleReference.datasetName}`);
+            } else {
+                logger.info('No Kaggle reference found, proceeding with Gemini-only generation');
+            }
+        } catch (error) {
+            logger.warn(`Kaggle reference retrieval failed: ${error.message}`);
+            logger.info('Falling back to Gemini-only generation');
+            // Continue without Kaggle reference
+        }
+
+        // Generate dataset using Gemini (with or without Kaggle reference)
         const generatedData = await generateDataset({
             topic,
             description,
             columns,
             rowCount,
-            sampleData
+            sampleData,
+            kaggleReference
         });
+
+        // Prepare Kaggle reference metadata for database
+        const kaggleReferences = kaggleReference ? [{
+            datasetName: kaggleReference.datasetName,
+            datasetUrl: kaggleReference.datasetUrl,
+            datasetRef: kaggleReference.datasetRef,
+            columnsUsed: kaggleReference.columns.map(col => col.name),
+            sampleSize: kaggleReference.sampleSize,
+            usedAt: new Date()
+        }] : [];
 
         // Save to database
         const dataset = new Dataset({
@@ -43,6 +72,7 @@ const generateDatasetController = async (req, res, next) => {
             columns,
             rowCount,
             sampleFileUrl: sampleFileUrl || null,
+            kaggleReferences,
             generatedData
         });
 
@@ -50,7 +80,7 @@ const generateDatasetController = async (req, res, next) => {
 
         logger.success(`Dataset saved with ID: ${dataset._id}`);
 
-        // Return response
+        // Return response with Kaggle reference info
         res.status(201).json({
             success: true,
             message: 'Dataset generated successfully',
@@ -61,7 +91,15 @@ const generateDatasetController = async (req, res, next) => {
                 columns: dataset.columns,
                 rowCount: dataset.rowCount,
                 generatedData: dataset.generatedData,
-                createdAt: dataset.createdAt
+                createdAt: dataset.createdAt,
+                kaggleReference: kaggleReference ? {
+                    used: true,
+                    datasetName: kaggleReference.datasetName,
+                    datasetUrl: kaggleReference.datasetUrl,
+                    columnsUsed: kaggleReference.columns.map(col => col.name)
+                } : {
+                    used: false
+                }
             }
         });
 
