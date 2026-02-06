@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-slate-800 antialiased;
+    /* Soft pastel gradient background */
+    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); 
+    /* Alternative more colorful pastel: */
+    /* background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%); */
+    background-attachment: fixed;
+  }
+}
+
+/* Custom Utilities for Glassmorphism */
+.glass-panel {
+  @apply bg-white/70 backdrop-blur-lg border border-white/50 shadow-xl rounded-2xl;
+}
+
+.glass-input {
+  @apply bg-white/50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-xl transition-all duration-200 outline-none;
+}
+
+.gradient-btn {
+  @apply bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 transform hover:-translate-y-0.5;
+}
