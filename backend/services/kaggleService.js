@@ -23,24 +23,45 @@ const MAX_DATASETS_TO_DOWNLOAD = 3;
 const MAX_SAMPLE_ROWS = 50;
 
 /**
- * Search Kaggle datasets using CLI
+ * Extract key search terms from topic
  * @param {string} topic - Dataset topic
- * @param {string} description - Dataset description
+ * @returns {string} Extracted key terms
+ */
+const extractKeyTerms = (topic) => {
+    if (!topic) return '';
+
+    // Remove common words that don't help with search
+    const stopWords = ['data', 'dataset', 'database', 'information', 'records', 'list', 'collection'];
+
+    // Split into words and filter
+    const words = topic
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(word => word.length > 2 && !stopWords.includes(word));
+
+    return words.join(' ');
+};
+
+/**
+ * Search Kaggle datasets using CLI (topic-only search)
+ * @param {string} topic - Dataset topic (ONLY this is used for search)
+ * @param {string} description - Dataset description (NOT used for search)
  * @returns {Promise<Array>} List of datasets
  */
 const searchKaggleDatasets = async (topic, description) => {
     try {
-        // Build search query
-        const query = sanitizeSearchQuery(`${topic} ${description}`);
+        // Extract key terms from topic only (ignore description)
+        const keyTerms = extractKeyTerms(topic);
+        const query = sanitizeSearchQuery(keyTerms);
 
         if (!query) {
             logger.warn('Empty search query after sanitization');
             return [];
         }
 
-        logger.info(`Searching Kaggle for: "${query}"`);
+        logger.info(`Searching Kaggle for topic: "${topic}" → query: "${query}"`);
 
-        // Execute Kaggle CLI search
+        // Execute Kaggle CLI search with extracted terms
         const command = `kaggle datasets list -s "${query}" --max-size 10`;
 
         const { stdout, stderr } = await Promise.race([
@@ -56,7 +77,7 @@ const searchKaggleDatasets = async (topic, description) => {
 
         // Parse output
         const datasets = parseKaggleListOutput(stdout);
-        logger.success(`Found ${datasets.length} Kaggle datasets`);
+        logger.success(`Found ${datasets.length} Kaggle datasets for "${query}"`);
 
         return datasets;
 
@@ -67,10 +88,10 @@ const searchKaggleDatasets = async (topic, description) => {
 };
 
 /**
- * Rank datasets based on relevance
+ * Rank datasets based on relevance (topic-only matching)
  * @param {Array} datasets - List of datasets from search
- * @param {string} topic - Original topic
- * @param {string} description - Original description
+ * @param {string} topic - Original topic (used for ranking)
+ * @param {string} description - Original description (NOT used for ranking)
  * @returns {Array} Ranked datasets (top 3)
  */
 const rankDatasets = (datasets, topic, description) => {
@@ -78,25 +99,34 @@ const rankDatasets = (datasets, topic, description) => {
         return [];
     }
 
-    const searchText = `${topic} ${description}`.toLowerCase();
+    // Use only topic for similarity matching (ignore description)
+    const topicLower = topic.toLowerCase();
+    const topicWords = topicLower.split(/\s+/).filter(w => w.length > 2);
 
     // Score each dataset
     const scored = datasets.map(dataset => {
         let score = 0;
+        const titleLower = dataset.title.toLowerCase();
 
-        // Title similarity (weight: 40%)
-        const titleSimilarity = calculateSimilarity(dataset.title, searchText);
-        score += titleSimilarity * 40;
+        // Exact phrase match bonus (weight: 50%)
+        if (titleLower.includes(topicLower)) {
+            score += 50;
+        }
 
-        // Popularity metrics (weight: 30%)
+        // Individual word matches (weight: 30%)
+        const wordMatches = topicWords.filter(word => titleLower.includes(word)).length;
+        const wordMatchScore = (wordMatches / Math.max(topicWords.length, 1)) * 30;
+        score += wordMatchScore;
+
+        // Popularity metrics (weight: 10%)
         const popularityScore = (
             Math.min(dataset.downloadCount / 1000, 10) +
             Math.min(dataset.voteCount / 100, 10)
         ) / 20;
-        score += popularityScore * 30;
+        score += popularityScore * 10;
 
-        // Usability rating (weight: 30%)
-        score += (dataset.usabilityRating / 1.0) * 30;
+        // Usability rating (weight: 10%)
+        score += (dataset.usabilityRating / 1.0) * 10;
 
         return {
             ...dataset,
@@ -116,115 +146,34 @@ const rankDatasets = (datasets, topic, description) => {
 };
 
 /**
- * Download Kaggle dataset
+ * Get dataset preview using Kaggle API (no download required)
  * @param {string} datasetRef - Dataset reference (owner/name)
- * @returns {Promise<string>} Path to downloaded directory
+ * @returns {Promise<Object>} Dataset preview with sample data
  */
-const downloadDataset = async (datasetRef) => {
+const getDatasetPreviewAPI = async (datasetRef) => {
     try {
-        const cacheDir = getKaggleCacheDir();
-        const datasetDir = path.join(cacheDir, datasetRef.replace('/', '_'));
+        const { getDatasetPreview } = require('./kaggleApiService');
 
-        // Create directory
-        await fs.mkdir(datasetDir, { recursive: true });
+        logger.info(`Fetching preview for: ${datasetRef}`);
 
-        logger.info(`Downloading Kaggle dataset: ${datasetRef}`);
+        const preview = await getDatasetPreview(datasetRef);
 
-        // Download using Kaggle CLI
-        const command = `kaggle datasets download -d "${datasetRef}" -p "${datasetDir}" --unzip`;
+        if (!preview) {
+            throw new Error('No preview available');
+        }
 
-        await Promise.race([
-            execAsync(command),
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Download timeout')), DOWNLOAD_TIMEOUT)
-            )
-        ]);
+        logger.success(`Got preview from: ${preview.fileName}`);
 
-        logger.success(`Downloaded dataset to: ${datasetDir}`);
-        return datasetDir;
+        return {
+            fileName: preview.fileName,
+            totalRows: preview.totalRows,
+            sampleRows: preview.sampleRows,
+            columns: preview.columns
+        };
 
     } catch (error) {
-        logger.error(`Failed to download dataset ${datasetRef}: ${error.message}`);
+        logger.error(`Failed to get preview for ${datasetRef}: ${error.message}`);
         throw error;
-    }
-};
-
-/**
- * Sample dataset files (CSV/JSON)
- * @param {string} datasetDir - Directory containing dataset files
- * @returns {Promise<Object>} Sampled data with schema
- */
-const sampleDatasetFiles = async (datasetDir) => {
-    try {
-        // List all files in directory
-        const files = await fs.readdir(datasetDir);
-
-        // Filter for CSV and JSON files
-        const dataFiles = files.filter(file => {
-            const ext = path.extname(file).toLowerCase();
-            return ext === '.csv' || ext === '.json';
-        });
-
-        if (dataFiles.length === 0) {
-            logger.warn('No CSV or JSON files found in dataset');
-            return null;
-        }
-
-        // Try to parse the first suitable file
-        for (const file of dataFiles) {
-            try {
-                const filePath = path.join(datasetDir, file);
-                const ext = path.extname(file).toLowerCase().replace('.', '');
-
-                // Check file size (skip if > 10MB)
-                const stats = await fs.stat(filePath);
-                if (stats.size > 10 * 1024 * 1024) {
-                    logger.warn(`Skipping large file: ${file} (${stats.size} bytes)`);
-                    continue;
-                }
-
-                logger.info(`Sampling file: ${file}`);
-
-                // Parse file
-                const parsedData = await parseSampleFile(filePath, ext);
-
-                if (!parsedData || parsedData.length === 0) {
-                    continue;
-                }
-
-                // Extract sample rows
-                const sampleRows = extractSampleData(parsedData, MAX_SAMPLE_ROWS);
-
-                // Infer column schema
-                const columns = Object.keys(sampleRows[0] || {}).map(colName => {
-                    const values = sampleRows.map(row => row[colName]);
-                    const datatype = inferColumnType(values);
-
-                    return {
-                        name: colName,
-                        datatype: datatype,
-                        sampleValues: values.slice(0, 3) // First 3 values as examples
-                    };
-                });
-
-                return {
-                    fileName: file,
-                    totalRows: parsedData.length,
-                    sampleRows: sampleRows,
-                    columns: columns
-                };
-
-            } catch (error) {
-                logger.warn(`Failed to parse ${file}: ${error.message}`);
-                continue;
-            }
-        }
-
-        return null;
-
-    } catch (error) {
-        logger.error(`Failed to sample dataset files: ${error.message}`);
-        return null;
     }
 };
 
@@ -262,7 +211,7 @@ const buildReferenceContext = (sample, datasetInfo) => {
 
 /**
  * Get Kaggle reference for dataset generation
- * Main orchestration function
+ * Main orchestration function (uses API preview, no downloads)
  * @param {string} topic - Dataset topic
  * @param {string} description - Dataset description
  * @returns {Promise<Object|null>} Kaggle reference or null
@@ -291,7 +240,7 @@ const getKaggleReference = async (topic, description) => {
             return null;
         }
 
-        // Try to download and sample the top dataset
+        // Try to get preview from top datasets (API-based, no download)
         for (const dataset of rankedDatasets) {
             try {
                 // Check if already cached
@@ -303,18 +252,15 @@ const getKaggleReference = async (topic, description) => {
                     return reference;
                 }
 
-                // Download dataset
-                const datasetDir = await downloadDataset(dataset.ref);
+                // Get preview using Kaggle API (no download!)
+                const preview = await getDatasetPreviewAPI(dataset.ref);
 
-                // Sample files
-                const sample = await sampleDatasetFiles(datasetDir);
-
-                if (sample) {
-                    // Cache the sample
-                    cacheService.setDatasetSample(dataset.ref, sample);
+                if (preview) {
+                    // Cache the preview
+                    cacheService.setDatasetSample(dataset.ref, preview);
 
                     // Build reference context
-                    const reference = buildReferenceContext(sample, dataset);
+                    const reference = buildReferenceContext(preview, dataset);
 
                     // Cache the final reference
                     cacheService.setSearchResults(topic, description, reference);
@@ -339,10 +285,10 @@ const getKaggleReference = async (topic, description) => {
 };
 
 module.exports = {
+    extractKeyTerms,
     searchKaggleDatasets,
     rankDatasets,
-    downloadDataset,
-    sampleDatasetFiles,
+    getDatasetPreviewAPI,
     buildReferenceContext,
     getKaggleReference
 };

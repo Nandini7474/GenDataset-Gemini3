@@ -54,7 +54,12 @@ const datasetSchema = new mongoose.Schema({
         default: null,
         trim: true
     },
-    kaggleReferences: [{
+    referenceSources: [{
+        sourceType: {
+            type: String,
+            enum: ['kaggle', 'huggingface', 'openml', 'custom'],
+            required: true
+        },
         datasetName: {
             type: String,
             trim: true
@@ -63,16 +68,12 @@ const datasetSchema = new mongoose.Schema({
             type: String,
             trim: true
         },
-        datasetRef: {
+        relevanceSummary: {
             type: String,
             trim: true
         },
-        columnsUsed: [{
-            type: String
-        }],
-        sampleSize: {
-            type: Number,
-            default: 0
+        relevanceScore: {
+            type: Number
         },
         usedAt: {
             type: Date,

@@ -21,14 +21,15 @@ class CacheService {
     }
 
     /**
-     * Generate cache key from topic and description
+     * Generate cache key from topic only
      * @param {string} topic - Dataset topic
-     * @param {string} description - Dataset description
+     * @param {string} description - Dataset description (kept for compatibility but not used)
      * @returns {string} Cache key
      */
     generateSearchKey(topic, description) {
-        const combined = `${topic}|${description}`.toLowerCase().trim();
-        return `search:${combined}`;
+        // Use only topic for cache key (ignore description)
+        const key = topic.toLowerCase().trim();
+        return `search:${key}`;
     }
 
     /**

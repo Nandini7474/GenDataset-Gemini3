@@ -2,179 +2,93 @@ const { getGeminiModel } = require('../config/gemini');
 const logger = require('../utils/logger');
 
 /**
- * Build a detailed prompt for Gemini to generate dataset
+ * Build the prompt for Gemini
  * @param {string} topic - Dataset topic
  * @param {string} description - Dataset description
- * @param {Array} columns - Array of column objects {name, datatype}
- * @param {number} rowCount - Number of rows to generate
- * @param {Array} sampleData - Optional sample data for context
- * @param {Object} kaggleReference - Optional Kaggle dataset reference
- * @returns {string} Formatted prompt
+ * @param {Array} columns - Column definitions
+ * @param {number} rowCount - Number of rows
+ * @param {string|null} referenceContext - Formatted reference context string
+ * @returns {string} The constructed prompt
  */
-const buildPrompt = (topic, description, columns, rowCount, sampleData = null, kaggleReference = null) => {
-    let prompt = `You are a professional data generator. Generate a realistic dataset based on the following specifications:
+const buildPrompt = (topic, description, columns, rowCount, referenceContext) => {
+    const columnSpecs = columns.map(col =>
+        `- ${col.name} (${col.datatype}): ${col.examples || 'generate realistic values'}`
+    ).join('\n');
 
-**Topic:** ${topic}
+    let prompt = `Generate a realistic dataset for the topic: "${topic}"\n`;
+    prompt += `Description: ${description}\n\n`;
 
-**Description:** ${description}
-
-**Columns:**
-${columns.map((col, idx) => `${idx + 1}. ${col.name} (${col.datatype})`).join('\n')}
-
-**Number of Rows:** ${rowCount}
-
-`;
-
-    // Add Kaggle reference context if available
-    if (kaggleReference) {
-        prompt += `**Reference Dataset Context:**
-You have access to a real Kaggle dataset as reference: "${kaggleReference.datasetName}"
-Dataset URL: ${kaggleReference.datasetUrl}
-This dataset contains ${kaggleReference.totalRows} rows with the following structure:
-
-**Reference Columns:**
-${kaggleReference.columns.map((col, idx) =>
-            `${idx + 1}. ${col.name} (${col.datatype}) - Examples: ${col.sampleValues.join(', ')}`
-        ).join('\n')}
-
-**Sample Rows from Reference Dataset:**
-${JSON.stringify(kaggleReference.sampleRows.slice(0, 3), null, 2)}
-
-**IMPORTANT:** Use this reference dataset to understand:
-- Realistic data patterns and distributions
-- Appropriate value ranges and formats
-- Domain-specific terminology and naming conventions
-- Relationships between different data fields
-
-However, you MUST:
-- Generate NEW, ORIGINAL data (do NOT copy rows directly)
-- Follow the user's specified columns and datatypes (not the reference columns)
-- Maintain the same level of realism and quality as the reference
-- Ensure generated data is contextually appropriate for the topic
-
-`;
+    // Add reference context if available
+    if (referenceContext) {
+        prompt += referenceContext;
     }
 
-    if (sampleData && sampleData.length > 0) {
-        prompt += `**User-Provided Sample Data:**
-${JSON.stringify(sampleData.slice(0, 3), null, 2)}
+    prompt += `SPECIFICATIONS:\n`;
+    prompt += `Columns:\n${columnSpecs}\n\n`;
+    prompt += `Number of rows: ${rowCount}\n\n`;
 
-`;
-    }
-
-    prompt += `**Instructions:**
-1. Generate EXACTLY ${rowCount} rows of realistic data
-2. Each row must be a JSON object with keys matching the column names exactly
-3. Ensure data types match the specified column datatypes:
-   - string: text values
-   - number/integer/float: numeric values
-   - boolean: true or false
-   - date: ISO 8601 format (YYYY-MM-DD or full timestamp)
-   - email: valid email addresses
-   - phone: valid phone numbers with country code
-   - url: valid URLs starting with http:// or https://
-   - address: complete street addresses
-   - name: realistic full names
-   - percentage: numeric values between 0-100
-   - currency: numeric values with 2 decimal places
-
-4. Make the data realistic and contextually relevant to the topic
-5. Ensure variety in the generated data (avoid repetitive patterns)
-${kaggleReference ? '6. Use the Kaggle reference to inform realistic patterns, but generate original data\n7. ' : '6. '}Return ONLY a valid JSON array of objects, no additional text or explanation
-
-**Output Format:**
-[
-  { "column1": "value1", "column2": "value2", ... },
-  { "column1": "value1", "column2": "value2", ... },
-  ...
-]
-
-Generate the dataset now:`;
+    prompt += `OUTPUT FORMAT:\n`;
+    prompt += `Return ONLY a valid JSON array of objects. Each object should represent one row.\n`;
+    prompt += `Do not include markdown formatting, code blocks, or explanations.\n`;
+    prompt += `Example: [{"col1": "val1", "col2": 10}, ...]\n`;
 
     return prompt;
 };
 
 /**
- * Parse and validate Gemini response
- * @param {string} responseText - Raw response from Gemini
- * @returns {Array} Parsed dataset array
+ * Generate dataset using Gemini
+ * @param {string} topic - Dataset topic
+ * @param {string} description - Dataset description
+ * @param {Array} columns - Column definitions
+ * @param {number} rowCount - Number of rows
+ * @param {string|null} referenceContext - Reference context for improved generation
+ * @returns {Promise<Array>} The generated dataset
  */
-const parseGeminiResponse = (responseText) => {
+const generateDataset = async (topic, description, columns, rowCount, referenceContext = null) => {
     try {
-        // Remove markdown code blocks if present
-        let cleanedText = responseText.trim();
-
-        // Remove ```json and ``` markers
-        cleanedText = cleanedText.replace(/```json\s*/gi, '');
-        cleanedText = cleanedText.replace(/```\s*/g, '');
-
-        // Try to find JSON array in the response
-        const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) {
-            throw new Error('No JSON array found in response');
-        }
-
-        const parsedData = JSON.parse(jsonMatch[0]);
-
-        if (!Array.isArray(parsedData)) {
-            throw new Error('Response is not an array');
-        }
-
-        if (parsedData.length === 0) {
-            throw new Error('Generated dataset is empty');
-        }
-
-        return parsedData;
-    } catch (error) {
-        logger.error(`Error parsing Gemini response: ${error.message}`);
-        throw new Error(`Failed to parse AI response: ${error.message}`);
-    }
-};
-
-/**
- * Generate dataset using Gemini API
- * @param {Object} params - Generation parameters
- * @param {string} params.topic - Dataset topic
- * @param {string} params.description - Dataset description
- * @param {Array} params.columns - Column definitions
- * @param {number} params.rowCount - Number of rows
- * @param {Array} params.sampleData - Optional sample data
- * @param {Object} params.kaggleReference - Optional Kaggle reference context
- * @returns {Promise<Array>} Generated dataset
- */
-const generateDataset = async ({ topic, description, columns, rowCount, sampleData, kaggleReference }) => {
-    try {
-        const refInfo = kaggleReference ? ` with Kaggle reference (${kaggleReference.datasetName})` : '';
-        logger.info(`Generating dataset for topic: ${topic} with ${rowCount} rows${refInfo}`);
-
-        // Build the prompt with Kaggle reference
-        const prompt = buildPrompt(topic, description, columns, rowCount, sampleData, kaggleReference);
-        logger.debug(`Prompt built: ${prompt.substring(0, 200)}...`);
-
-        // Get Gemini model
         const model = getGeminiModel();
 
-        // Generate content
+        logger.info(`Generating dataset for topic: ${topic} with ${rowCount} rows`);
+
+        const prompt = buildPrompt(topic, description, columns, rowCount, referenceContext);
+
+        logger.debug(`Prompt built: ${prompt.substring(0, 500)}...`);
+
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
 
-        logger.debug(`Gemini response received: ${text.substring(0, 200)}...`);
+        // Clean up the response (remove code blocks if present)
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-        // Parse and validate response
-        const dataset = parseGeminiResponse(text);
+        try {
+            const dataset = JSON.parse(cleanedText);
 
-        logger.success(`Successfully generated ${dataset.length} rows`);
-        return dataset;
+            if (!Array.isArray(dataset)) {
+                throw new Error('Response is not an array');
+            }
+
+            // Validate row count (Gemini might generate slightly different count)
+            if (dataset.length !== rowCount) {
+                logger.warn(`Generated ${dataset.length} rows, requested ${rowCount}`);
+            }
+
+            logger.success(`Successfully generated ${dataset.length} rows`);
+            return dataset;
+
+        } catch (parseError) {
+            logger.error(`Failed to parse Gemini response: ${parseError.message}`);
+            logger.debug(`Raw response: ${text.substring(0, 200)}...`);
+            throw new Error('Failed to generate valid JSON dataset');
+        }
 
     } catch (error) {
-        logger.error(`Error generating dataset: ${error.message}`);
-        throw new Error(`Dataset generation failed: ${error.message}`);
+        logger.error(`Gemini generation failed: ${error.message}`);
+        throw error;
     }
 };
 
 module.exports = {
     buildPrompt,
-    parseGeminiResponse,
     generateDataset
 };

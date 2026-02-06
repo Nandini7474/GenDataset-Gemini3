@@ -1,6 +1,6 @@
 const Dataset = require('../models/Dataset');
-const { generateDataset } = require('../services/geminiService');
-const { getKaggleReference } = require('../services/kaggleService');
+const geminiService = require('../services/geminiService');
+const { validationResult } = require('express-validator');
 const { parseSampleFile, extractSampleData, getFileExtension } = require('../services/fileService');
 const logger = require('../utils/logger');
 const { APIError } = require('../middleware/errorHandler');
@@ -11,95 +11,68 @@ const { APIError } = require('../middleware/errorHandler');
  */
 const generateDatasetController = async (req, res, next) => {
     try {
-        const { topic, description, columns, rowCount, sampleFileUrl } = req.body;
+        const { topic, description, columns, rowCount } = req.body;
 
-        logger.info(`Generating dataset: ${topic}`);
-
-        // Parse sample file if provided
-        let sampleData = null;
-        if (sampleFileUrl) {
-            try {
-                const fileExt = getFileExtension(sampleFileUrl);
-                const parsedFile = await parseSampleFile(sampleFileUrl, fileExt);
-                sampleData = extractSampleData(parsedFile, 5);
-            } catch (error) {
-                logger.warn(`Could not parse sample file: ${error.message}`);
-                // Continue without sample data
-            }
+        // Validation
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        // Get Kaggle reference (gracefully handle failures)
-        let kaggleReference = null;
+        logger.info(`Received generation request for topic: ${topic}`);
+
+        // 1. Build Reference Context (Kaggle Metadata + Public APIs)
+        // This won't fail the request if it errors (graceful degradation)
+        let referenceContext = null;
+        let formattedContext = null;
+
         try {
-            logger.info('Attempting to fetch Kaggle reference...');
-            kaggleReference = await getKaggleReference(topic, description);
+            const { buildReferenceContext, formatContextForPrompt } = require('../services/referenceContextBuilder');
 
-            if (kaggleReference) {
-                logger.success(`Using Kaggle reference: ${kaggleReference.datasetName}`);
+            logger.info('Building reference context...');
+            referenceContext = await buildReferenceContext(topic, description);
+            formattedContext = formatContextForPrompt(referenceContext);
+
+            if (referenceContext && referenceContext.referenceSources.length > 0) {
+                logger.success(`Reference context built with ${referenceContext.referenceSources.length} sources`);
             } else {
-                logger.info('No Kaggle reference found, proceeding with Gemini-only generation');
+                logger.info('No reference sources found, proceeding with Gemini-only generation');
             }
-        } catch (error) {
-            logger.warn(`Kaggle reference retrieval failed: ${error.message}`);
-            logger.info('Falling back to Gemini-only generation');
-            // Continue without Kaggle reference
+        } catch (refError) {
+            logger.warn(`Failed to build reference context: ${refError.message}`);
+            // Continue without reference
         }
 
-        // Generate dataset using Gemini (with or without Kaggle reference)
-        const generatedData = await generateDataset({
+        // 2. Generate Dataset using Gemini with Reference Context
+        const generatedData = await geminiService.generateDataset(
             topic,
             description,
             columns,
             rowCount,
-            sampleData,
-            kaggleReference
-        });
+            formattedContext
+        );
 
-        // Prepare Kaggle reference metadata for database
-        const kaggleReferences = kaggleReference ? [{
-            datasetName: kaggleReference.datasetName,
-            datasetUrl: kaggleReference.datasetUrl,
-            datasetRef: kaggleReference.datasetRef,
-            columnsUsed: kaggleReference.columns.map(col => col.name),
-            sampleSize: kaggleReference.sampleSize,
-            usedAt: new Date()
-        }] : [];
-
-        // Save to database
+        // 3. Save to Database
         const dataset = new Dataset({
             topic,
             description,
             columns,
             rowCount,
-            sampleFileUrl: sampleFileUrl || null,
-            kaggleReferences,
-            generatedData
+            generatedData,
+            referenceSources: referenceContext ? referenceContext.referenceSources : []
         });
 
         await dataset.save();
-
         logger.success(`Dataset saved with ID: ${dataset._id}`);
 
-        // Return response with Kaggle reference info
+        // 4. Send Response
         res.status(201).json({
             success: true,
-            message: 'Dataset generated successfully',
-            data: {
-                id: dataset._id,
-                topic: dataset.topic,
-                description: dataset.description,
-                columns: dataset.columns,
-                rowCount: dataset.rowCount,
-                generatedData: dataset.generatedData,
-                createdAt: dataset.createdAt,
-                kaggleReference: kaggleReference ? {
-                    used: true,
-                    datasetName: kaggleReference.datasetName,
-                    datasetUrl: kaggleReference.datasetUrl,
-                    columnsUsed: kaggleReference.columns.map(col => col.name)
-                } : {
-                    used: false
-                }
+            generatedData: dataset.generatedData,
+            createdAt: dataset.createdAt,
+            referenceContext: {
+                used: referenceContext && referenceContext.referenceSources.length > 0,
+                sources: referenceContext ? referenceContext.referenceSources : []
             }
         });
 

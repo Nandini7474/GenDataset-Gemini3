@@ -27,3 +27,5 @@ Thumbs.db
 *.swp
 *.swo
 *~
+NSDataLab-API.postman_collection.json
+POSTMAN_TESTS.md
