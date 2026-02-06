@@ -8,6 +8,10 @@ node_modules/
 uploads/*
 !uploads/.gitkeep
 
+# Kaggle cache
+kaggle-cache/*
+!kaggle-cache/.gitkeep
+
 # Logs
 logs/
 *.log
