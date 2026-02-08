@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/database');
 const { initializeGemini } = require('./config/gemini');
+const { initializeKaggle, validateKaggleConfig } = require('./config/kaggle');
 const datasetRoutes = require('./routes/datasetRoutes');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
@@ -21,6 +22,28 @@ try {
 } catch (error) {
     logger.error('Failed to initialize Gemini API. Please check your API key.');
 }
+
+// Initialize Kaggle CLI (optional, graceful degradation)
+(async () => {
+    try {
+        const validation = await validateKaggleConfig();
+
+        if (validation.isConfigured) {
+            const initialized = await initializeKaggle();
+            if (initialized && validation.isCliAvailable) {
+                logger.success('Kaggle CLI initialized successfully');
+            } else if (!validation.isCliAvailable) {
+                logger.warn('Kaggle credentials configured but CLI not installed');
+                logger.info('Install Kaggle CLI: pip install kaggle');
+            }
+        } else {
+            logger.info('Kaggle integration disabled (no credentials configured)');
+        }
+    } catch (error) {
+        logger.warn(`Kaggle initialization failed: ${error.message}`);
+        logger.info('Dataset generation will work without Kaggle references');
+    }
+})();
 
 // Security middleware
 app.use(helmet());

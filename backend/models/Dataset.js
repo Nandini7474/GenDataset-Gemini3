@@ -54,6 +54,32 @@ const datasetSchema = new mongoose.Schema({
         default: null,
         trim: true
     },
+    referenceSources: [{
+        sourceType: {
+            type: String,
+            enum: ['kaggle', 'huggingface', 'openml', 'custom'],
+            required: true
+        },
+        datasetName: {
+            type: String,
+            trim: true
+        },
+        datasetUrl: {
+            type: String,
+            trim: true
+        },
+        relevanceSummary: {
+            type: String,
+            trim: true
+        },
+        relevanceScore: {
+            type: Number
+        },
+        usedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     generatedData: {
         type: mongoose.Schema.Types.Mixed,
         required: true,

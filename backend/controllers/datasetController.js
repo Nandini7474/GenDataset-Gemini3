@@ -1,67 +1,78 @@
 const Dataset = require('../models/Dataset');
-const { generateDataset } = require('../services/geminiService');
+const geminiService = require('../services/geminiService');
+const { validationResult } = require('express-validator');
 const { parseSampleFile, extractSampleData, getFileExtension } = require('../services/fileService');
 const logger = require('../utils/logger');
 const { APIError } = require('../middleware/errorHandler');
 
 /**
- * Generate dataset using Gemini API
+ * Generate dataset using Gemini API with optional Kaggle reference
  * POST /api/generate
  */
 const generateDatasetController = async (req, res, next) => {
     try {
-        const { topic, description, columns, rowCount, sampleFileUrl } = req.body;
+        const { topic, description, columns, rowCount } = req.body;
 
-        logger.info(`Generating dataset: ${topic}`);
-
-        // Parse sample file if provided
-        let sampleData = null;
-        if (sampleFileUrl) {
-            try {
-                const fileExt = getFileExtension(sampleFileUrl);
-                const parsedFile = await parseSampleFile(sampleFileUrl, fileExt);
-                sampleData = extractSampleData(parsedFile, 5);
-            } catch (error) {
-                logger.warn(`Could not parse sample file: ${error.message}`);
-                // Continue without sample data
-            }
+        // Validation
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        // Generate dataset using Gemini
-        const generatedData = await generateDataset({
+        logger.info(`Received generation request for topic: ${topic}`);
+
+        // 1. Build Reference Context (Kaggle Metadata + Public APIs)
+        // This won't fail the request if it errors (graceful degradation)
+        let referenceContext = null;
+        let formattedContext = null;
+
+        try {
+            const { buildReferenceContext, formatContextForPrompt } = require('../services/referenceContextBuilder');
+
+            logger.info('Building reference context...');
+            referenceContext = await buildReferenceContext(topic, description);
+            formattedContext = formatContextForPrompt(referenceContext);
+
+            if (referenceContext && referenceContext.referenceSources.length > 0) {
+                logger.success(`Reference context built with ${referenceContext.referenceSources.length} sources`);
+            } else {
+                logger.info('No reference sources found, proceeding with Gemini-only generation');
+            }
+        } catch (refError) {
+            logger.warn(`Failed to build reference context: ${refError.message}`);
+            // Continue without reference
+        }
+
+        // 2. Generate Dataset using Gemini with Reference Context
+        const generatedData = await geminiService.generateDataset(
             topic,
             description,
             columns,
             rowCount,
-            sampleData
-        });
+            formattedContext
+        );
 
-        // Save to database
+        // 3. Save to Database
         const dataset = new Dataset({
             topic,
             description,
             columns,
             rowCount,
-            sampleFileUrl: sampleFileUrl || null,
-            generatedData
+            generatedData,
+            referenceSources: referenceContext ? referenceContext.referenceSources : []
         });
 
         await dataset.save();
-
         logger.success(`Dataset saved with ID: ${dataset._id}`);
 
-        // Return response
+        // 4. Send Response
         res.status(201).json({
             success: true,
-            message: 'Dataset generated successfully',
-            data: {
-                id: dataset._id,
-                topic: dataset.topic,
-                description: dataset.description,
-                columns: dataset.columns,
-                rowCount: dataset.rowCount,
-                generatedData: dataset.generatedData,
-                createdAt: dataset.createdAt
+            generatedData: dataset.generatedData,
+            createdAt: dataset.createdAt,
+            referenceContext: {
+                used: referenceContext && referenceContext.referenceSources.length > 0,
+                sources: referenceContext ? referenceContext.referenceSources : []
             }
         });
 
