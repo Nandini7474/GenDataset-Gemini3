@@ -589,10 +589,9 @@ const DatasetForm = () => {
                                     <Download className="w-5 h-5" />
                                     Export
                                 </button>
-                            </div>
                         </div>
 
-                            {showPreview && (
+                        {showPreview && (
                                 <div className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-scale-in max-h-[500px] overflow-y-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="sticky top-0 bg-slate-100 z-10">
