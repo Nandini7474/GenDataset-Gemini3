@@ -87,9 +87,8 @@ const DatasetForm = () => {
     const [customDomain, setCustomDomain] = useState('');
     const [description, setDescription] = useState('');
     const [rowCount, setRowCount] = useState(100);
-    const [colCount, setColCount] = useState(5);
+    const [colCount, setColCount] = useState(0);
     const [schema, setSchema] = useState([]);
-    const [editedFields, setEditedFields] = useState(new Set());
 
     // Status states
     const [isGenerating, setIsGenerating] = useState(false);
@@ -108,63 +107,114 @@ const DatasetForm = () => {
         'Percentage', 'Currency'
     ];
 
-    // Sync schema with colCount and Domain
+    // Synchronization logic between colCount and schema
     useEffect(() => {
-        const suggestions = DOMAIN_SUGGESTIONS[domain] || [];
-        const newSchema = [...schema];
+        const currentLen = schema.length;
+        if (currentLen === colCount) return;
 
-        if (newSchema.length < colCount) {
+        if (colCount > currentLen) {
             // Add rows
-            for (let i = newSchema.length; i < colCount; i++) {
+            const suggestions = DOMAIN_SUGGESTIONS[domain] || [];
+            const newRows = [];
+            for (let i = currentLen; i < colCount; i++) {
                 const suggestion = suggestions[i];
-                newSchema.push({
+                newRows.push({
                     id: Math.random().toString(36).substr(2, 9),
                     name: suggestion ? suggestion.name : '',
                     type: suggestion ? suggestion.type : 'String',
                     required: suggestion ? suggestion.required : false,
-                    isSuggested: !!suggestion && !editedFields.has(i)
+                    isSuggested: !!suggestion,
+                    isConfirmed: false
                 });
             }
-        } else if (newSchema.length > colCount) {
-            // Remove rows
-            newSchema.splice(colCount);
+            setSchema([...schema, ...newRows]);
+        } else {
+            // Truncate rows
+            setSchema(schema.slice(0, colCount));
         }
-
-        setSchema(newSchema);
     }, [colCount, domain]);
 
-    const handleSchemaChange = (id, field, value) => {
-        setSchema(schema.map(row => {
-            if (row.id === id) {
-                const newRow = { ...row, [field]: value };
-                // If the user edited name or type, it's no longer a pure suggestion
-                if (field === 'name' || field === 'type') {
-                    setEditedFields(prev => new Set(prev).add(id));
-                }
-                return newRow;
-            }
-            return row;
-        }));
+    const handleColCountChange = (e) => {
+        const val = parseInt(e.target.value) || 0;
+        const boundedVal = Math.min(30, Math.max(0, val));
+        setColCount(boundedVal);
+
+        // When user manually sets a column count > 0, we treat the current rows as "dark" (confirmed)
+        // unless they are just placeholders. The user wants "after selecting the column show schema... in dark"
+        if (boundedVal > 0) {
+            setSchema(prev => prev.map(row => ({ ...row, isConfirmed: true })));
+        }
     };
 
     const handleDomainChange = (e) => {
         const val = e.target.value;
         setDomain(val);
-        setEditedFields(new Set()); // Reset edited state when domain changes to allow new suggestions
 
-        // Populate schema based on domain
-        const suggestions = DOMAIN_SUGGESTIONS[val] || [];
-        const newSchema = [];
-        for (let i = 0; i < colCount; i++) {
-            const suggestion = suggestions[i];
-            newSchema.push({
-                id: Math.random().toString(36).substr(2, 9),
-                name: suggestion ? suggestion.name : '',
-                type: suggestion ? suggestion.type : 'String',
-                required: suggestion ? suggestion.required : false
-            });
-        }
-        setSchema(newSchema);
+        // Show suggestions (Light Black)
+        const suggestions = (DOMAIN_SUGGESTIONS[val] || []).map(s => ({
+            id: Math.random().toString(36).substr(2, 9),
+            name: s.name,
+            type: s.type,
+            required: s.required,
+            isSuggested: true,
+            isConfirmed: false
+        }));
+
+        // We populate the schema but keep colCount as 0 or the current selection?
+        // User said: "after selecting the domain show them a schema defination suggestion with the light black"
+        // This implies the table is visible even if colCount is 0?
+        // Let's make the table visible based on suggestions if colCount is 0,
+        // or just set colCount to suggestions length?
+        // "in no. of column keep the default as 0 and let user enter the field no."
+        // This suggests the table might be empty until colCount is entered, 
+        // OR the domain selection adds a "temporary" set of rows.
+        // Let's go with: domain selection adds rows to schema, but they are light.
+        setSchema(suggestions);
+        // We should probably NOT set colCount automatically if the user wants default as 0.
+        // But if there are no rows, the table is hidden.
+        // Let's set colCount to 0, but allow the table to show "suggested" rows if a domain is selected.
+        // Actually, the sync effect will truncate if colCount is 0.
+        // Let's modify the sync effect to only truncate if colCount is greater than 0? No.
+        // Let's set colCount to 0, and if domain is selected, we show the suggestions AND set it as a "potential" schema.
+        // But the user said "check the no. of col is equal to no. of field".
+        // This means colCount MUST match schema.length.
+        // So picking a domain should probably set colCount to suggestions length OR keep 0.
+        // If it keeps 0, the table is empty.
+        // Let's set colCount to 0. Table is empty. 
+        // Then user enters "5". Sync effect adds 5 suggestions from the selected domain.
+        // These are LIGHT.
+        // Then user edits or confirms -> DARK.
+        setSchema([]);
+        setColCount(0);
+    };
+
+    const handleSchemaChange = (id, field, value) => {
+        setSchema(schema.map(row => {
+            if (row.id === id) {
+                return { ...row, [field]: value, isConfirmed: true };
+            }
+            return row;
+        }));
+    };
+
+    const handleAddField = () => {
+        if (colCount >= 30) return;
+        setColCount(colCount + 1);
+        // New field added via button is Dark (confirmed)
+        setSchema(prev => {
+            const last = prev[prev.length - 1];
+            if (last) {
+                const updated = [...prev];
+                updated[updated.length - 1] = { ...updated[updated.length - 1], isConfirmed: true };
+                return updated;
+            }
+            return prev;
+        });
+    };
+
+    const handleRemoveRow = (id) => {
+        setSchema(schema.filter(row => row.id !== id));
+        setColCount(prev => Math.max(0, prev - 1));
     };
 
     const handleGenerate = async () => {
@@ -176,6 +226,11 @@ const DatasetForm = () => {
 
         if (!description.trim()) {
             setStatus({ type: 'error', message: 'Please provide a description for the dataset.' });
+            return;
+        }
+
+        if (colCount === 0) {
+            setStatus({ type: 'error', message: 'Please specify the number of columns and define your schema.' });
             return;
         }
 
@@ -336,22 +391,30 @@ const DatasetForm = () => {
                         <label className="text-sm font-semibold text-slate-600 ml-1">Number of Columns</label>
                         <input
                             type="number"
-                            min="1" max="30"
+                            min="0" max="30"
                             value={colCount}
-                            onChange={(e) => setColCount(Math.min(30, parseInt(e.target.value) || 1))}
+                            onChange={handleColCountChange}
                             className="w-full glass-input py-3 px-4 font-bold border-indigo-200 ring-2 ring-indigo-50"
                         />
-                        <p className="text-xs text-indigo-400 ml-1 font-medium italic">Adjusting this will update the schema table below.</p>
+                        <p className="text-xs text-indigo-400 ml-1 font-medium italic">Define how many fields you need.</p>
                     </div>
                 </div>
 
                 {/* Schema Definition */}
                 <div className="relative z-10 pt-4">
-                    <label className="text-lg font-bold text-slate-700 flex items-center gap-2 mb-4">
-                        <Table className="w-5 h-5 text-indigo-500" />
-                        Schema Configuration
-                        {schema.length > 0 && <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{schema.length} fields</span>}
-                    </label>
+                    <div className="flex items-center justify-between mb-4">
+                        <label className="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <Table className="w-5 h-5 text-indigo-500" />
+                            Schema Configuration
+                            {schema.length > 0 && <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-full ml-2">{schema.length} fields</span>}
+                        </label>
+                        <button
+                            onClick={handleAddField}
+                            className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-all shadow-sm border border-indigo-100"
+                        >
+                            <Plus className="w-4 h-4" /> Add Field
+                        </button>
+                    </div>
 
                     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white/50 backdrop-blur-sm shadow-sm">
                         <table className="w-full text-left border-collapse">
@@ -360,6 +423,7 @@ const DatasetForm = () => {
                                     <th className="px-6 py-4">Field Name</th>
                                     <th className="px-6 py-4">Datatype</th>
                                     <th className="px-6 py-4 text-center">Required</th>
+                                    <th className="px-2 py-4 w-12 text-center"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -373,7 +437,7 @@ const DatasetForm = () => {
                                                 placeholder="Field name..."
                                                 className={clsx(
                                                     "w-full bg-transparent border-b border-transparent focus:border-indigo-300 outline-none py-1 transition-all font-medium",
-                                                    !editedFields.has(row.id) ? "text-slate-400 italic" : "text-slate-700"
+                                                    !row.isConfirmed ? "text-slate-400 italic" : "text-slate-700"
                                                 )}
                                             />
                                         </td>
@@ -383,7 +447,7 @@ const DatasetForm = () => {
                                                 onChange={(e) => handleSchemaChange(row.id, 'type', e.target.value)}
                                                 className={clsx(
                                                     "w-full bg-transparent outline-none cursor-pointer text-sm py-1 font-medium",
-                                                    !editedFields.has(row.id) ? "text-slate-400 italic" : "text-slate-700"
+                                                    !row.isConfirmed ? "text-slate-400 italic" : "text-slate-700"
                                                 )}
                                             >
                                                 {columnTypes.map(type => (
@@ -399,8 +463,23 @@ const DatasetForm = () => {
                                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
                                             />
                                         </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <button
+                                                onClick={() => handleRemoveRow(row.id)}
+                                                className="text-slate-300 group-hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-50"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
+                                {schema.length === 0 && (
+                                    <tr>
+                                        <td colSpan="4" className="px-6 py-10 text-center text-slate-400 italic text-sm">
+                                            No fields defined. Select a domain or enter number of columns to begin.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
