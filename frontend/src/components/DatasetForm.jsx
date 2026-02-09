@@ -309,12 +309,17 @@ const DatasetForm = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto mt-8 px-4 pb-20 animate-fade-in">
+    
+        <div className="relative max-w-4xl mx-auto -mt-24 px-4 pb-24 animate-fade-in">
 
+  {/* 🔮 Hero → Form background glow (MATCHES HERO) */}
+<div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-purple-300/30 rounded-full blur-3xl -z-10" />
+<div className="absolute top-24 right-10 w-[300px] h-[300px] bg-pink-300/20 rounded-full blur-3xl -z-10" />
+     
             {/* Expanded Domain Selector */}
             <div className="w-full mb-8 space-y-4">
                 <div className="relative group w-full">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl opacity-10 group-hover:opacity-20 transition duration-300 blur-xl"></div>
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-purple-500 rounded-2xl opacity-10 group-hover:opacity-20 transition duration-300 blur-xl"></div>
                     <div className="relative bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-2 flex flex-col md:flex-row gap-2">
                         <div className="flex-1 relative">
                             <select
@@ -337,7 +342,7 @@ const DatasetForm = () => {
                                     placeholder="Enter your custom domain..."
                                     value={customDomain}
                                     onChange={(e) => setCustomDomain(e.target.value)}
-                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-lg font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-lg font-medium text-slate-700 focus:ring-2 focus:ring-purple-500 transition-all outline-none"
                                 />
                             </div>
                         )}
@@ -345,9 +350,10 @@ const DatasetForm = () => {
                 </div>
             </div>
 
-            <div className="glass-panel p-8 space-y-8 relative overflow-hidden">
-                <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
-                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+            <div className="relative p-10 space-y-10 rounded-3xl bg-white/80 backdrop-blur-xl border border-purple-100 shadow-xl overflow-hidden">
+
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-pink-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
+                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
 
                 {/* Status Messages */}
                 {status.message && (
@@ -363,7 +369,8 @@ const DatasetForm = () => {
                 {/* Dataset Description */}
                 <div className="relative z-10 space-y-2">
                     <label className="text-sm font-semibold text-slate-600 ml-1 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-purple-500" />
+                        <Sparkles className="w-6 h-6 text-white/90 animate-pulse" />
+
                         Dataset Description <span className="text-red-500 font-bold">*</span>
                     </label>
                     <textarea
@@ -394,9 +401,9 @@ const DatasetForm = () => {
                             min="0" max="30"
                             value={colCount}
                             onChange={handleColCountChange}
-                            className="w-full glass-input py-3 px-4 font-bold border-indigo-200 ring-2 ring-indigo-50"
+                            className="w-full glass-input py-3 px-4 font-bold border-purple-200 ring-2 ring-purple-50"
                         />
-                        <p className="text-xs text-indigo-400 ml-1 font-medium italic">Define how many fields you need.</p>
+                        <p className="text-xs text-purple-400 ml-1 font-medium italic">Define how many fields you need.</p>
                     </div>
                 </div>
 
@@ -404,13 +411,13 @@ const DatasetForm = () => {
                 <div className="relative z-10 pt-4">
                     <div className="flex items-center justify-between mb-4">
                         <label className="text-lg font-bold text-slate-700 flex items-center gap-2">
-                            <Table className="w-5 h-5 text-indigo-500" />
+                            <Table className="w-5 h-5 text-purple-500" />
                             Schema Configuration
                             {schema.length > 0 && <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-full ml-2">{schema.length} fields</span>}
                         </label>
                         <button
                             onClick={handleAddField}
-                            className="flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-all shadow-sm border border-indigo-100"
+                            className="flex items-center gap-1 text-sm font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-xl transition-all shadow-sm border border-purple-100"
                         >
                             <Plus className="w-4 h-4" /> Add Field
                         </button>
@@ -428,7 +435,7 @@ const DatasetForm = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {schema.map((row) => (
-                                    <tr key={row.id} className="hover:bg-indigo-50/20 transition-colors group">
+                                    <tr key={row.id} className="hover:bg-purple-50/20 transition-colors group">
                                         <td className="px-6 py-3">
                                             <input
                                                 type="text"
@@ -436,7 +443,7 @@ const DatasetForm = () => {
                                                 onChange={(e) => handleSchemaChange(row.id, 'name', e.target.value)}
                                                 placeholder="Field name..."
                                                 className={clsx(
-                                                    "w-full bg-transparent border-b border-transparent focus:border-indigo-300 outline-none py-1 transition-all font-medium",
+                                                    "w-full bg-transparent border-b border-transparent focus:border-purple-300 outline-none py-1 transition-all font-medium",
                                                     !row.isConfirmed ? "text-slate-400 italic" : "text-slate-700"
                                                 )}
                                             />
@@ -460,7 +467,7 @@ const DatasetForm = () => {
                                                 type="checkbox"
                                                 checked={row.required}
                                                 onChange={(e) => handleSchemaChange(row.id, 'required', e.target.checked)}
-                                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                                                className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500 cursor-pointer"
                                             />
                                         </td>
                                         <td className="px-4 py-3 text-center">
@@ -489,10 +496,10 @@ const DatasetForm = () => {
                 <div className="relative z-10 flex justify-center">
                     <label className={clsx(
                         "flex items-center gap-2 px-6 py-2 rounded-xl border border-dashed transition-all group cursor-pointer",
-                        isUploading ? "bg-slate-50 border-slate-200" : "border-slate-300 hover:border-indigo-400 hover:bg-indigo-50"
+                        isUploading ? "bg-slate-50 border-slate-200" : "border-slate-300 hover:border-purple-400 hover:bg-purple-50"
                     )}>
-                        {isUploading ? <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-400 group-hover:text-indigo-500" />}
-                        <span className="text-sm font-medium text-slate-500 group-hover:text-indigo-600">Upload Reference Sample</span>
+                        {isUploading ? <Loader2 className="w-4 h-4 text-purple-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-400 group-hover:text-purple-500" />}
+                        <span className="text-sm font-medium text-slate-500 group-hover:text-purple-600">Upload Reference Sample</span>
                         <input type="file" className="hidden" accept=".csv, .xlsx" onChange={handleFileUpload} disabled={isUploading} />
                     </label>
                 </div>
@@ -503,9 +510,12 @@ const DatasetForm = () => {
                         onClick={handleGenerate}
                         disabled={isGenerating}
                         className={clsx(
-                            "gradient-btn px-20 py-4 rounded-full text-xl font-black flex items-center gap-4 shadow-2xl transition-all",
-                            isGenerating ? "opacity-70 scale-95" : "hover:scale-105 active:scale-95"
-                        )}
+  "px-20 py-4 rounded-full text-xl font-black flex items-center gap-4 transition-all shadow-xl",
+  "bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white",
+  "hover:shadow-2xl hover:scale-105 active:scale-95",
+  isGenerating && "opacity-70 scale-95"
+                    )}
+
                     >
                         {isGenerating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6 animate-pulse text-yellow-300" />}
                         {isGenerating ? 'Building Dataset...' : 'Generate Dataset'}
@@ -521,7 +531,7 @@ const DatasetForm = () => {
                                     onClick={() => setShowPreview(!showPreview)}
                                     className={clsx(
                                         "flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-sm",
-                                        showPreview ? "bg-indigo-600 text-white" : "bg-white text-slate-700 border hover:bg-slate-50"
+                                        showPreview ? "bg-purple-600 text-white" : "bg-white text-slate-700 border hover:bg-slate-50"
                                     )}
                                 >
                                     <Eye className="w-5 h-5" />
@@ -545,7 +555,7 @@ const DatasetForm = () => {
                                     <select
                                         value={exportFormat}
                                         onChange={(e) => setExportFormat(e.target.value)}
-                                        className="bg-transparent text-sm font-black text-indigo-600 outline-none cursor-pointer"
+                                        className="bg-transparent text-sm font-black text-purple-600 outline-none cursor-pointer"
                                     >
                                         <option value="JSON">JSON</option>
                                         <option value="CSV">CSV</option>
