@@ -498,49 +498,27 @@ const DatasetForm = () => {
                 </div>
 
                 {/* Main Generate Button */}
-                <div className="flex justify-center pt-4 relative z-10">
+                <div className="flex flex-col items-center gap-6 pt-4 relative z-10">
                     <button
                         onClick={handleGenerate}
                         disabled={isGenerating}
                         className={clsx(
-                            "gradient-btn px-20 py-4 rounded-full text-xl font-black flex items-center gap-4 shadow-2xl transition-all",
-                            isGenerating ? "opacity-70 scale-95" : "hover:scale-105 active:scale-95"
+                            "px-20 py-4 rounded-full text-xl font-black flex items-center gap-4 shadow-2xl transition-all",
+                            isGenerating
+                                ? "bg-indigo-100 text-indigo-400 border border-indigo-200 cursor-not-allowed"
+                                : "gradient-btn hover:scale-105 active:scale-95"
                         )}
                     >
-                        {isGenerating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6 animate-pulse text-yellow-300" />}
-                        {isGenerating ? 'Building Dataset...' : 'Generate Dataset'}
+                        {isGenerating ? <Loader2 className="w-6 h-6 animate-spin text-indigo-400" /> : <Sparkles className="w-6 h-6 animate-pulse text-yellow-300" />}
+                        {isGenerating ? 'Generating...' : 'Generate Dataset'}
                     </button>
-                </div>
 
-                {/* Actions & Preview Area */}
-                {generatedData && (
-                    <div className="pt-8 border-t border-slate-100 animate-slide-up relative z-10">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-slate-50/50 rounded-3xl border border-slate-100">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setShowPreview(!showPreview)}
-                                    className={clsx(
-                                        "flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-sm",
-                                        showPreview ? "bg-indigo-600 text-white" : "bg-white text-slate-700 border hover:bg-slate-50"
-                                    )}
-                                >
-                                    <Eye className="w-5 h-5" />
-                                    {showPreview ? 'Close Preview' : 'Preview Result'}
-                                </button>
-                                <div className="flex items-center gap-3 bg-white border rounded-2xl px-4 py-2.5 shadow-sm">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Viewport</span>
-                                    <select
-                                        value={previewRows}
-                                        onChange={(e) => setPreviewRows(parseInt(e.target.value))}
-                                        className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-                                    >
-                                        {[25, 50, 75, 100].map(n => <option key={n} value={n}>{n} rows</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-3 bg-white border rounded-2xl px-4 py-2.5 shadow-sm">
+                    {/* Actions Area */}
+                    {generatedData && (
+                        <div className="w-full space-y-6 animate-slide-up">
+                            {/* Export Row */}
+                            <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+                                <div className="flex items-center gap-3 bg-white border rounded-2xl px-4 py-2.5 shadow-sm min-w-[140px]">
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Export As</span>
                                     <select
                                         value={exportFormat}
@@ -554,38 +532,63 @@ const DatasetForm = () => {
                                 </div>
                                 <button
                                     onClick={handleDownload}
-                                    className="flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-2xl font-black hover:bg-black transition-all shadow-xl active:scale-95"
+                                    className="flex items-center gap-2 bg-slate-900 text-white px-10 py-3 rounded-2xl font-black hover:bg-black transition-all shadow-xl active:scale-95"
                                 >
                                     <Download className="w-5 h-5" />
-                                    Export
+                                    Download Dataset
                                 </button>
                             </div>
-                        </div>
 
-                        {showPreview && (
-                            <div className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-scale-in max-h-[500px] overflow-y-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="sticky top-0 bg-slate-100 z-10">
-                                        <tr>
-                                            {Object.keys(generatedData[0]).map(k => (
-                                                <th key={k} className="px-6 py-4 text-xs font-black text-slate-500 uppercase border-b">{k}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {generatedData.slice(0, previewRows).map((r, i) => (
-                                            <tr key={i} className="hover:bg-slate-50 transition-colors">
-                                                {Object.values(r).map((v, j) => (
-                                                    <td key={j} className="px-6 py-4 text-sm text-slate-600">{v?.toString()}</td>
+                            {/* Preview & Viewport Row */}
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                                <button
+                                    onClick={() => setShowPreview(!showPreview)}
+                                    className={clsx(
+                                        "flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-sm",
+                                        showPreview ? "bg-indigo-600 text-white" : "bg-white text-slate-700 border hover:bg-slate-50"
+                                    )}
+                                >
+                                    <Eye className="w-5 h-5" />
+                                    {showPreview ? 'Close Preview' : 'Preview Dataset'}
+                                </button>
+
+                                <div className="flex items-center gap-3 bg-white border rounded-2xl px-4 py-2.5 shadow-sm">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Viewport</span>
+                                    <select
+                                        value={previewRows}
+                                        onChange={(e) => setPreviewRows(parseInt(e.target.value))}
+                                        className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+                                    >
+                                        {[25, 50, 75, 100].map(n => <option key={n} value={n}>{n} rows</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {showPreview && (
+                                <div className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-scale-in max-h-[500px] overflow-y-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="sticky top-0 bg-slate-100 z-10">
+                                            <tr>
+                                                {Object.keys(generatedData[0]).map(k => (
+                                                    <th key={k} className="px-6 py-4 text-xs font-black text-slate-500 uppercase border-b">{k}</th>
                                                 ))}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {generatedData.slice(0, previewRows).map((r, i) => (
+                                                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                                    {Object.values(r).map((v, j) => (
+                                                        <td key={j} className="px-6 py-4 text-sm text-slate-600">{v?.toString()}</td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
