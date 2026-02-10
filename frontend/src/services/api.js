@@ -4,28 +4,17 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
  * Generate a new dataset
  * @param {Object} data - { topic, description, columns, rowCount }
  */
-export const generateDataset = async (data) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
+export const generateDataset = async (payload) => {
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || result.errors?.[0]?.msg || 'Failed to generate dataset');
-        }
-
-        return result;
-    } catch (error) {
-        console.error('API Error (generateDataset):', error);
-        throw error;
-    }
+  if (!res.ok) throw new Error('Failed to generate dataset');
+  return res.json();
 };
+
 
 /**
  * Upload a sample file

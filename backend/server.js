@@ -94,6 +94,9 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 5000;
+app.get('/', (req, res) => {
+  res.send('Backend is alive 🚀');
+});
 app.listen(PORT, () => {
     logger.success(`Server running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -105,5 +108,6 @@ process.on('unhandledRejection', (err) => {
     // Close server & exit process
     process.exit(1);
 });
+
 
 module.exports = app;
