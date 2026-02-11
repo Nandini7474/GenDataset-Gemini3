@@ -28,9 +28,10 @@ GenDataset-Gemini3Pro uses **Gemini 3 Pro** as its core intelligence layer to ge
 https://YOUR-VERCEL-URL.vercel.app
 ### 🔹 Backend (Render)
 https://gendataset-gemini3.onrender.com
+ 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 **Frontend**
 - React (Vite)
