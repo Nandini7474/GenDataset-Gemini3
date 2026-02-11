@@ -50,7 +50,7 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-    origin: [process.env.CORS_ORIGIN || '*', 'https://gen-dataset-gemini3.vercel.app'],
+    origin: ['https://gen-dataset-gemini3.vercel.app', 'http://localhost:5173'],
     credentials: true
 }));
 

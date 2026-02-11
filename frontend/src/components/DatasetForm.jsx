@@ -309,13 +309,13 @@ const DatasetForm = () => {
     };
 
     return (
-    
+
         <div className="relative max-w-4xl mx-auto -mt-24 px-4 pb-24 animate-fade-in">
 
-  {/* 🔮 Hero → Form background glow (MATCHES HERO) */}
-<div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-purple-300/30 rounded-full blur-3xl -z-10" />
-<div className="absolute top-24 right-10 w-[300px] h-[300px] bg-pink-300/20 rounded-full blur-3xl -z-10" />
-     
+            {/* 🔮 Hero → Form background glow (MATCHES HERO) */}
+            <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-purple-300/30 rounded-full blur-3xl -z-10" />
+            <div className="absolute top-24 right-10 w-[300px] h-[300px] bg-pink-300/20 rounded-full blur-3xl -z-10" />
+
             {/* Expanded Domain Selector */}
             <div className="w-full mb-8 space-y-4">
                 <div className="relative group w-full">
@@ -569,29 +569,8 @@ const DatasetForm = () => {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-3 bg-white border rounded-2xl px-4 py-2.5 shadow-sm">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Export As</span>
-                                    <select
-                                        value={exportFormat}
-                                        onChange={(e) => setExportFormat(e.target.value)}
-                                        className="bg-transparent text-sm font-black text-indigo-600 outline-none cursor-pointer"
-                                    >
-                                        <option value="JSON">JSON</option>
-                                        <option value="CSV">CSV</option>
-                                        <option value="Excel">EXCEL</option>
-                                    </select>
-                                </div>
-                                <button
-                                    onClick={handleDownload}
-                                    className="flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-2xl font-black hover:bg-black transition-all shadow-xl active:scale-95"
-                                >
-                                    <Download className="w-5 h-5" />
-                                    Export
-                                </button>
-                        </div>
 
-                        {showPreview && (
+                            {showPreview && (
                                 <div className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl animate-scale-in max-h-[500px] overflow-y-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="sticky top-0 bg-slate-100 z-10">
