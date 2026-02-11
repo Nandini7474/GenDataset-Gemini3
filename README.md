@@ -23,6 +23,26 @@ GenDataset-Gemini3Pro uses **Gemini 3 Pro** as its core intelligence layer to ge
 - Dataset versioning and reuse with MongoDB  
 - Ready-to-use datasets for ML pipelines  
 
+##  Live Deployment
+### 🔹 Frontend (Vercel)
+https://YOUR-VERCEL-URL.vercel.app
+### 🔹 Backend (Render)
+https://gendataset-gemini3.onrender.com
+---
+
+## 🛠️ Tech Stack
+
+**Frontend**
+- React (Vite)
+- Tailwind CSS
+- Axios
+
+**Backend**
+- Node.js
+- Express
+- MongoDB Atlas
+- Google Gemini API
+
 ## Why Gemini 3 Pro
 Gemini 3 Pro enables deep reasoning, instruction-following, and structured data generation, making it ideal for controlled, realistic dataset creation rather than simple synthetic sampling.
 
