@@ -25,7 +25,7 @@ GenDataset-Gemini3Pro uses **Gemini 3 Pro** as its core intelligence layer to ge
 
 ##  Live Deployment
 ### 🔹 Frontend (Vercel)
-https://YOUR-VERCEL-URL.vercel.app
+https://gen-dataset-gemini3.vercel.app/
 ### 🔹 Backend (Render)
 https://gendataset-gemini3.onrender.com
  
