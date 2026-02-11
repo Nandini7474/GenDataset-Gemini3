@@ -50,7 +50,7 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: [process.env.CORS_ORIGIN || '*', 'https://gen-dataset-gemini3.vercel.app'],
     credentials: true
 }));
 
@@ -86,6 +86,10 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api', datasetRoutes);
 
+app.get('/', (req, res) => {
+    res.send('Backend is alive 🚀');
+});
+
 // 404 handler
 app.use(notFound);
 
@@ -94,9 +98,6 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.get('/', (req, res) => {
-  res.send('Backend is alive 🚀');
-});
 app.listen(PORT, () => {
     logger.success(`Server running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);

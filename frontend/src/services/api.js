@@ -1,18 +1,18 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://gendataset-gemini3.onrender.com/api';
 
 /**
  * Generate a new dataset
  * @param {Object} data - { topic, description, columns, rowCount }
  */
 export const generateDataset = async (payload) => {
-  const res = await fetch('/api/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+    const res = await fetch(`${API_BASE_URL}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
 
-  if (!res.ok) throw new Error('Failed to generate dataset');
-  return res.json();
+    if (!res.ok) throw new Error('Failed to generate dataset');
+    return res.json();
 };
 
 
